@@ -1,39 +1,60 @@
 # 주식·ETF 기술적 분석 대시보드
 
-yfinance와 pandas-ta로 오실레이터, 이동평균, 피봇을 계산하고 TradingView Technicals 스타일로 시각화한다.
+일봉 OHLCV로 오실레이터, 이동평균, 피봇을 계산하고 TradingView Technicals 스타일 게이지로 요약한다.
 
-- 계획 문서: [docs/WORK_PLAN.md](docs/WORK_PLAN.md)
+시세는 [yfinance](https://github.com/ranaroussi/yfinance)에서 받고, 지표는 [pandas-ta](https://github.com/twopirllc/pandas-ta)와 직접 구현한 CCI·피봇을 쓴다.
 
-## 환경
+구현 단계는 [docs/WORK_PLAN.md](docs/WORK_PLAN.md)에 있다.
 
-Python 3.12, 패키지 관리는 [uv](https://docs.astral.sh/uv/).
+## 면책
+
+이 도구는 **투자 자문이나 매매 신호가 아니다.** 교육·연구용 기술적 지표 요약이며, 손실에 대한 책임은 사용자에게 있다. 시세는 Yahoo Finance 기준이라 거래소·차트 서비스와 다를 수 있다.
+
+## 요구 사항
+
+- Python 3.12
+- [uv](https://docs.astral.sh/uv/)
+
+## 설치
 
 ```bash
 uv sync --group dev
-uv run python -c "import yfinance, pandas_ta, pandas, streamlit, plotly, pytest; print('ok')"
-uv run pytest
 ```
 
-## 데이터 레이어 (Phase 1)
-
-`src/data/fetch.py`가 yfinance OHLCV를 `open/high/low/close/volume`으로 정규화한다.
-
-## 지표·신호 (Phase 2)
-
-`src/indicators/`에서 오실레이터 11개, 이동평균 12개, 피봇 5방법을 계산하고 바이/셀/뉴트럴을 붙인다.
-
-## 요약 게이지 (Phase 3)
-
-값이 있는 신호만 투표한다. `score = (바이 − 셀) / 전체` 로 스트롱 셀~스트롱 바이 등급을 정한다. 피봇은 투표에 넣지 않는다.
-
-## 대시보드 (Phase 4)
+## 실행
 
 ```bash
 uv run streamlit run src/dashboard/app.py
 ```
 
-사이드바에서 티커·기간을 고르거나, 네트워크 없이 보려면 샘플 데이터를 선택한다.
+브라우저에서 대시보드가 열린다. 네트워크 없이 화면만 보려면 사이드바에서 **샘플 데이터**를 선택한다.
 
-## TradingView 대조 (Phase 5)
+### 티커 예시
 
-일봉 기준으로 TradingView Technicals와 맞춰 AO는 제로크로스·접시, ADX는 20 이상+기울기, BBP는 Elder-Ray(`high+low−2×EMA13`)를 쓴다. CCI는 pandas-ta 대신 typical price MAD 공식을 쓴다.
+| 시장 | 입력 | 설명 |
+|------|------|------|
+| 미국 주식 | `AAPL` | 애플 |
+| 미국 ETF | `SPY`, `QQQ` | S&P 500, 나스닥 100 |
+| 한국 코스피 | `005930.KS` | 삼성전자 |
+| 한국 코스닥 | `035420.KQ` | NAVER 등 `.KQ` 접미사 |
+
+기간은 `1y` / `2y` / `5y` (기본 `2y`). SMA 200을 쓰려면 거래일이 약 200봉 이상 필요하다.
+
+## 테스트
+
+네트워크 없이 파서·지표·게이지·표 HTML을 검증한다.
+
+```bash
+uv run pytest
+```
+
+## 화면에 나오는 것
+
+- 게이지: 오실레이터 11표, 이동평균 12표, 둘을 합친 요약. 피봇은 투표에 넣지 않는다.
+- 오실레이터: RSI, Stoch %K, CCI, ADX, AO, 모멘텀, MACD 레벨, StochRSI, Williams %R, Bull Bear Power, UO
+- 이동평균: EMA/SMA 10, 20, 30, 50, 100, 200
+- 피봇: 클래식, 피보나치, 카마릴라, 우디, DM
+
+등급은 `score = (바이 − 셀) / 전체` 이다. `|score| < 0.1` 뉴트럴, `0.1` 이상 바이/셀, `0.5` 이상 스트롱 바이/셀.
+
+AO·ADX·BBP 신호와 CCI 값은 TradingView Technicals(일봉)에 맞춰 두었다. TV 요약 게이지는 Hull MA, VWMA, 이치모쿠를 더 넣으므로 전체 점수까지 항상 같지는 않다.

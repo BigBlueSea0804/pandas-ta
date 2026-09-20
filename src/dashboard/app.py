@@ -37,7 +37,9 @@ def main() -> None:
         period = st.selectbox("기간", options=["1y", "2y", "5y"], index=1)
         use_sample = st.checkbox("샘플 데이터 (네트워크 없음)", value=False)
         run = st.button("분석", type="primary")
-        st.caption("투자 조언이 아닙니다. 일봉 기준 기술적 지표 요약입니다.")
+        st.caption(
+            "투자 자문이 아닙니다. 일봉 기술적 지표 요약이며, 매매 결정에 사용하지 마세요."
+        )
 
     if not run and "analysis_ready" not in st.session_state:
         st.info("왼쪽에서 티커를 입력한 뒤 분석을 누르세요. 화면 확인용으로는 샘플 데이터를 쓸 수 있습니다.")
@@ -118,6 +120,7 @@ def main() -> None:
     st.markdown(signals_table_html("오실레이터", analysis.oscillators), unsafe_allow_html=True)
     st.markdown(signals_table_html("무빙 애버리지", analysis.moving_averages), unsafe_allow_html=True)
     st.markdown(pivots_table_html(analysis.pivots), unsafe_allow_html=True)
+    st.caption("면책: 투자 자문이 아닙니다. 과거 가격 기반 지표이며 미래 수익을 보장하지 않습니다.")
 
 
 if __name__ == "__main__":
