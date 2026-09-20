@@ -44,3 +44,16 @@ WILLR_OVERSOLD = -80
 WILLR_OVERBOUGHT = -20
 UO_OVERSOLD = 30
 UO_OVERBOUGHT = 70
+
+BUY_COLOR = "#3b82f6"
+SELL_COLOR = "#ef4444"
+NEUTRAL_COLOR = "#9ca3af"
+ACTION_COLORS = {"buy": BUY_COLOR, "sell": SELL_COLOR, "neutral": NEUTRAL_COLOR}
+
+PIVOT_METHOD_LABELS = {
+    "classic": "클래식",
+    "fibonacci": "피보나치",
+    "camarilla": "카마릴라",
+    "woodie": "우디",
+    "dm": "DM",
+}

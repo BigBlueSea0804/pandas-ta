@@ -137,3 +137,22 @@ def fetch_ohlcv(
             f"(최소 {MIN_BARS_SMA200})."
         )
     return OhlcvResult(ticker=symbol, data=data, bar_count=len(data), warning=warning)
+
+
+def demo_ohlcv(n: int = 260) -> OhlcvResult:
+    """네트워크 없이 대시보드를 확인할 수 있는 상승 추세 샘플."""
+    index = pd.date_range("2024-01-02", periods=n, freq="B")
+    close = 100.0 + pd.Series(range(n), index=index, dtype="float64") * 0.35
+    data = pd.DataFrame(
+        {
+            "open": close - 0.25,
+            "high": close + 0.8,
+            "low": close - 0.8,
+            "close": close,
+            "volume": 1_000_000,
+        },
+        index=index,
+    )
+    data.index.name = "date"
+    return OhlcvResult(ticker="SAMPLE", data=data, bar_count=len(data))
+

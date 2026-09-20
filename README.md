@@ -25,3 +25,11 @@ uv run pytest
 ## 요약 게이지 (Phase 3)
 
 값이 있는 신호만 투표한다. `score = (바이 − 셀) / 전체` 로 스트롱 셀~스트롱 바이 등급을 정한다. 피봇은 투표에 넣지 않는다.
+
+## 대시보드 (Phase 4)
+
+```bash
+uv run streamlit run src/dashboard/app.py
+```
+
+사이드바에서 티커·기간을 고르거나, 네트워크 없이 보려면 샘플 데이터를 선택한다.
