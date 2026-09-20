@@ -1,0 +1,29 @@
+[project]
+name = "ta-dashboard"
+version = "0.1.0"
+description = "주식·ETF 기술적 분석 대시보드"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "yfinance==1.7.0",
+    "pandas==3.0.6",
+    "numpy==2.2.6",
+    "pandas-ta==0.4.71b0",
+    "streamlit==1.64.0",
+    "plotly==7.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:The 'mode.copy_on_write' option is deprecated:pandas.errors.Pandas4Warning",
+]
+
+[tool.uv]
+package = false
