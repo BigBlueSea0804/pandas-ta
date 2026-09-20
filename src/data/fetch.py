@@ -9,7 +9,7 @@ from typing import Callable
 import pandas as pd
 import yfinance as yf
 
-from config import DEFAULT_INTERVAL, DEFAULT_PERIOD, MIN_BARS_SMA200, OHLCV_COLUMNS
+from config import DEFAULT_INTERVAL, DEFAULT_PERIOD, MIN_BARS_SMA200, OHLCV_COLUMNS, Timeframe
 
 Downloader = Callable[..., pd.DataFrame | None]
 
@@ -137,6 +137,46 @@ def fetch_ohlcv(
             f"(최소 {MIN_BARS_SMA200})."
         )
     return OhlcvResult(ticker=symbol, data=data, bar_count=len(data), warning=warning)
+
+
+def resample_ohlcv(data: pd.DataFrame, rule: str) -> pd.DataFrame:
+    """더 잘게 받은 봉(예: 1시간)을 더 긴 봉(예: 4시간)으로 합성한다."""
+    resampled = data.resample(rule).agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    )
+    resampled = resampled.dropna(subset=["open", "high", "low", "close"])
+    resampled.index.name = "date"
+    return resampled
+
+
+def fetch_timeframe_ohlcv(
+    ticker: str,
+    timeframe: Timeframe,
+    *,
+    period: str | None = None,
+    downloader: Downloader = yf.download,
+) -> OhlcvResult:
+    """TradingView 탭(1분~1달)에 맞춰 봉 단위 자체를 바꿔서 시세를 받는다."""
+    result = fetch_ohlcv(
+        ticker,
+        period=period or timeframe.period,
+        interval=timeframe.yf_interval,
+        downloader=downloader,
+    )
+    if timeframe.resample_rule is None:
+        return result
+
+    resampled = resample_ohlcv(result.data, timeframe.resample_rule)
+    if resampled.empty:
+        raise FetchError(f"{result.ticker}: {timeframe.label} 봉으로 합칠 데이터가 없습니다.")
+
+    warning = result.warning
+    if len(resampled) < MIN_BARS_SMA200:
+        warning = (
+            f"{result.ticker}: 봉 수가 {len(resampled)}개로 SMA 200 계산에 부족합니다"
+            f"(최소 {MIN_BARS_SMA200})."
+        )
+    return OhlcvResult(ticker=result.ticker, data=resampled, bar_count=len(resampled), warning=warning)
 
 
 def demo_ohlcv(n: int = 260) -> OhlcvResult:
