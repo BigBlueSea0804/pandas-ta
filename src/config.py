@@ -1,11 +1,40 @@
 """데이터 수집·지표 계산에 쓰는 공통 상수."""
 
+from dataclasses import dataclass
 from typing import Literal
 
 OHLCV_COLUMNS = ("open", "high", "low", "close", "volume")
 DEFAULT_PERIOD = "2y"
 DEFAULT_INTERVAL = "1d"
 MIN_BARS_SMA200 = 200
+
+
+@dataclass(frozen=True)
+class Timeframe:
+    """TradingView 스타일 시간 단위 하나. yfinance가 직접 지원하지 않는
+    2시간/4시간은 resample_rule로 1시간봉을 다운받아 합성한다."""
+
+    label: str
+    yf_interval: str
+    period: str
+    resample_rule: str | None = None
+
+
+# TradingView Technicals 상단 탭과 동일한 순서.
+TIMEFRAMES: tuple[Timeframe, ...] = (
+    Timeframe("1분", "1m", "5d"),
+    Timeframe("5분", "5m", "1mo"),
+    Timeframe("15분", "15m", "1mo"),
+    Timeframe("30분", "30m", "1mo"),
+    Timeframe("1시간", "60m", "2y"),
+    Timeframe("2시간", "60m", "2y", resample_rule="2h"),
+    Timeframe("4시간", "60m", "2y", resample_rule="4h"),
+    Timeframe("1일", "1d", DEFAULT_PERIOD),
+    Timeframe("1주", "1wk", "5y"),
+    Timeframe("1달", "1mo", "10y"),
+)
+TIMEFRAME_LABELS = tuple(timeframe.label for timeframe in TIMEFRAMES)
+DEFAULT_TIMEFRAME = "1일"
 
 MA_PERIODS = (10, 20, 30, 50, 100, 200)
 BBP_EMA_LENGTH = 13
