@@ -64,6 +64,9 @@ def test_moving_averages_order_and_buy_on_uptrend() -> None:
         "sma_100",
         "ema_200",
         "sma_200",
+        "ichimoku_base_line",
+        "vwma_20",
+        "hma_9",
     ]
     close = frame["close"]
     last_close = float(close.iloc[-1])
@@ -71,8 +74,10 @@ def test_moving_averages_order_and_buy_on_uptrend() -> None:
     expected = float(ta.sma(close, length=10).iloc[-1])
     assert sma10.value == pytest.approx(expected)
     assert last_close > expected
-    assert all(item.action == "buy" for item in signals)
     assert all(item.value is not None for item in signals)
+    # 완벽한 등속 상승 픽스처에서는 반응이 빠른 HMA가 종가와 정확히
+    # 같은 값으로 수렴할 수 있어(뉴트럴) 12개 기본 MA만 엄격히 검사한다.
+    assert all(item.action == "buy" for item in signals[:12])
 
 
 def test_sma200_missing_when_too_short() -> None:
@@ -122,7 +127,7 @@ def test_analyze_ohlcv_builds_gauges() -> None:
     assert result.ticker == "TEST"
     assert result.close == float(frame["close"].iloc[-1])
     assert len(result.oscillators) == 11
-    assert len(result.moving_averages) == 12
+    assert len(result.moving_averages) == 15
     assert result.ma_gauge.rating == "strong_buy"
     assert result.overall_gauge.buy == result.oscillator_gauge.buy + result.ma_gauge.buy
     assert result.pivots["classic"]["P"] is not None

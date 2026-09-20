@@ -23,6 +23,8 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:The 'mode.copy_on_write' option is deprecated:pandas.errors.Pandas4Warning",
+    # pandas-ta의 ichimoku 내부 구현이 'd' 빈도 별칭을 쓴다 (우리 코드 밖 경고).
+    "ignore:'d' is deprecated:pandas.errors.Pandas4Warning",
 ]
 
 [tool.uv]

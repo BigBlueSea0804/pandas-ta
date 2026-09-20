@@ -60,5 +60,5 @@ def test_demo_analysis_has_full_dashboard_payload() -> None:
     result = analyze_ohlcv(packed.data, ticker=packed.ticker)
     assert packed.ticker == "SAMPLE"
     assert len(result.oscillators) == 11
-    assert len(result.moving_averages) == 12
+    assert len(result.moving_averages) == 15
     assert result.ma_gauge.buy >= 10
