@@ -6,9 +6,11 @@ from indicators.signals import (
     action_bbp,
     action_cci,
     action_ma,
+    action_macd,
+    action_mom,
     action_rsi,
-    action_signed,
     action_stoch,
+    action_stochrsi,
     action_willr,
 )
 
@@ -20,13 +22,28 @@ def test_rsi_bands() -> None:
     assert action_rsi(70) == "sell"
 
 
-def test_stoch_and_cci_bands() -> None:
-    assert action_stoch(20) == "buy"
-    assert action_stoch(50) == "neutral"
-    assert action_stoch(80) == "sell"
-    assert action_cci(-100) == "buy"
-    assert action_cci(0) == "neutral"
-    assert action_cci(100) == "sell"
+def test_stoch_needs_band_and_kd_cross() -> None:
+    # %K·%D 둘 다 밴드를 넘고 서로 교차해야 신호. %K만 밴드를 넘긴 경우는 뉴트럴.
+    assert action_stoch(15, 10) == "buy"
+    assert action_stoch(85, 90) == "sell"
+    assert action_stoch(50, 50) == "neutral"
+    assert action_stoch(90, 70) == "neutral"
+    assert action_stoch(None, 90) == "neutral"
+
+
+def test_stochrsi_needs_band_and_kd_cross() -> None:
+    assert action_stochrsi(15, 10) == "buy"
+    assert action_stochrsi(94.6, 96) == "sell"
+    assert action_stochrsi(94.6, 80) == "neutral"
+
+
+def test_cci_needs_reversal_from_band() -> None:
+    assert action_cci(-105, -110) == "buy"
+    assert action_cci(-105, -95) == "neutral"
+    assert action_cci(105, 110) == "sell"
+    assert action_cci(105, 95) == "neutral"
+    assert action_cci(50, 40) == "neutral"
+    assert action_cci(None, None) == "neutral"
 
 
 def test_willr_bands() -> None:
@@ -35,11 +52,20 @@ def test_willr_bands() -> None:
     assert action_willr(-20) == "sell"
 
 
-def test_signed_momentum() -> None:
-    assert action_signed(1) == "buy"
-    assert action_signed(-1) == "sell"
-    assert action_signed(0) == "neutral"
-    assert action_signed(None) == "neutral"
+def test_mom_uses_slope_not_sign() -> None:
+    assert action_mom(5, 3) == "buy"
+    assert action_mom(3, 5) == "sell"
+    assert action_mom(5, 5) == "neutral"
+    assert action_mom(None, None) == "neutral"
+    # 값 자체는 양수여도 직전 봉보다 줄었으면 셀(TradingView 실제 규칙).
+    assert action_mom(7.92, 8.5) == "sell"
+
+
+def test_macd_compares_to_signal_line() -> None:
+    assert action_macd(1.2, 0.8) == "buy"
+    assert action_macd(0.5, 0.9) == "sell"
+    assert action_macd(0.5, 0.5) == "neutral"
+    assert action_macd(None, None) == "neutral"
 
 
 def test_ma_vs_close() -> None:
@@ -49,14 +75,13 @@ def test_ma_vs_close() -> None:
     assert action_ma(100, None) == "neutral"
 
 
-def test_adx_needs_trend_di_and_slope() -> None:
-    assert action_adx(19, 30, 10, 18) == "neutral"
-    assert action_adx(25, 30, 10, 20) == "buy"
-    assert action_adx(25, 30, 10, 26) == "neutral"
-    assert action_adx(25, 10, 30, 28) == "sell"
-    assert action_adx(25, 10, 30, 20) == "neutral"
-    assert action_adx(25, 20, 20, 20) == "neutral"
-    assert action_adx(25, 30, 10, None) == "neutral"
+def test_adx_needs_trend_and_di_cross() -> None:
+    assert action_adx(19, 30, 10, 20, 25) == "neutral"
+    assert action_adx(25, 30, 10, 20, 25) == "buy"
+    assert action_adx(25, 30, 10, 30, 10) == "neutral"
+    assert action_adx(25, 10, 30, 25, 20) == "sell"
+    assert action_adx(25, 20, 20, 20, 20) == "neutral"
+    assert action_adx(25, 30, 10, None, 25) == "neutral"
 
 
 def test_ao_zero_cross_and_saucer() -> None:

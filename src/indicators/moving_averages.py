@@ -27,7 +27,10 @@ def _ma_signal(
 
 
 def compute_moving_averages(ohlcv: pd.DataFrame) -> list[Signal]:
+    high = ohlcv["high"]
+    low = ohlcv["low"]
     close = ohlcv["close"]
+    volume = ohlcv["volume"]
     last_close = last_number(close)
     signals: list[Signal] = []
     for period in MA_PERIODS:
@@ -47,4 +50,32 @@ def compute_moving_averages(ohlcv: pd.DataFrame) -> list[Signal]:
                 mean=last_number(ta.sma(close, length=period)),
             )
         )
+
+    ichimoku_result = ta.ichimoku(high, low, close, tenkan=9, kijun=26, senkou=52)
+    ichimoku_df = ichimoku_result[0] if ichimoku_result is not None else None
+    ichimoku_base = last_number(ichimoku_df, prefix="IKS_26")
+    signals.append(
+        Signal(
+            id="ichimoku_base_line",
+            name="일목 기준선 (9, 26, 52, 26)",
+            value=ichimoku_base,
+            action=action_ma(last_close, ichimoku_base),
+        )
+    )
+
+    vwma = last_number(ta.vwma(close, volume, length=20))
+    signals.append(
+        Signal(
+            id="vwma_20",
+            name="볼륨 웨이티드 무빙 애버리지 (20)",
+            value=vwma,
+            action=action_ma(last_close, vwma),
+        )
+    )
+
+    hma = last_number(ta.hma(close, length=9))
+    signals.append(
+        Signal(id="hma_9", name="헐 이동 평균 (9)", value=hma, action=action_ma(last_close, hma))
+    )
+
     return signals

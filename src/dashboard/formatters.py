@@ -4,16 +4,10 @@ from __future__ import annotations
 
 
 def format_value(value: float | None) -> str:
+    """TradingView Technicals 표와 동일하게 소수점 둘째 자리까지 표시한다."""
     if value is None:
         return "—"
-    abs_value = abs(value)
-    if abs_value >= 100:
-        return f"{value:,.0f}"
-    if abs_value >= 10:
-        return f"{value:.0f}"
-    if abs_value >= 1:
-        return f"{value:.1f}"
-    return f"{value:.2f}"
+    return f"{value:,.2f}"
 
 
 def format_price(value: float) -> str:
