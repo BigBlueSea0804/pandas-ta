@@ -59,13 +59,15 @@ src/
     tables.py
   config.py           # 기간, 컬럼명, 임계값
 tests/
+  test_fetch.py
   test_signals.py
   test_pivots.py
   test_summary.py
-requirements.txt
+pyproject.toml
+uv.lock
 ```
 
-엔트리는 `streamlit run src/dashboard/app.py`.
+패키지 관리는 **uv**. 엔트리는 `uv run streamlit run src/dashboard/app.py`.
 
 ---
 
@@ -243,8 +245,8 @@ Streamlit 컬럼으로 표를 HTML/dataframe 스타일링하거나 `st.dataframe
 ## 9. 구현 단계
 
 ### Phase 0 — 환경
-- `requirements.txt`: `yfinance`, `pandas`, `numpy`, `pandas-ta`(또는 `pandas-ta-classic`), `streamlit`, `plotly`, `pytest`
-- Python 3.11 권장. `pandas-ta`가 구버전 pandas에 묶여 있으면 포크 또는 직접 구현으로 우회.
+- `pyproject.toml` + `uv.lock`: `yfinance`, `pandas`, `numpy`, `pandas-ta`, `streamlit`, `plotly`, `pytest`(dev group)
+- Python 3.12 (`requires-python = ">=3.12,<3.13"`). `pandas-ta`가 구버전 pandas에 묶여 있으면 포크 또는 직접 구현으로 우회.
 
 ### Phase 1 — 데이터 레이어
 - `fetch.py`: 다운로드, 컬럼 정규화, 최소 봉 수 검증.

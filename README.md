@@ -4,13 +4,12 @@ yfinance와 pandas-ta로 오실레이터, 이동평균, 피봇을 계산하고 T
 
 - 계획 문서: [docs/WORK_PLAN.md](docs/WORK_PLAN.md)
 
-## 환경 (Phase 0)
+## 환경
 
-Python 3.12에서 아래 의존성을 설치·임포트까지 확인했다.
+Python 3.12, 패키지 관리는 [uv](https://docs.astral.sh/uv/).
 
 ```bash
-pip install -r requirements.txt
-python -c "import yfinance, pandas_ta, pandas, streamlit, plotly, pytest; print('ok')"
+uv sync --group dev
+uv run python -c "import yfinance, pandas_ta, pandas, streamlit, plotly, pytest; print('ok')"
+uv run pytest
 ```
-
-구현은 Phase 1(데이터 레이어)부터 이어진다.
