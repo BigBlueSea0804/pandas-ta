@@ -13,6 +13,17 @@ BBP_EMA_LENGTH = 13
 Action = Literal["buy", "sell", "neutral"]
 ACTION_LABELS = {"buy": "바이", "sell": "셀", "neutral": "뉴트럴"}
 
+Rating = Literal["strong_sell", "sell", "neutral", "buy", "strong_buy"]
+RATING_LABELS = {
+    "strong_sell": "스트롱 셀",
+    "sell": "셀",
+    "neutral": "뉴트럴",
+    "buy": "바이",
+    "strong_buy": "스트롱 바이",
+}
+SCORE_STRONG = 0.5
+SCORE_LEAN = 0.1
+
 PIVOT_METHODS = ("classic", "fibonacci", "camarilla", "woodie", "dm")
 PIVOT_LEVELS = ("R3", "R2", "R1", "P", "S1", "S2", "S3")
 FIB_R1 = 0.382

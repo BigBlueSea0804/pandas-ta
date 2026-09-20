@@ -5,6 +5,7 @@ import pandas as pd
 import pandas_ta as ta
 import pytest
 
+from indicators.analyze import analyze_ohlcv
 from indicators.moving_averages import compute_moving_averages
 from indicators.oscillators import compute_oscillators
 
@@ -84,3 +85,15 @@ def test_oscillators_return_eleven_named_rows() -> None:
     assert by_id["macd_12_26"].action == "buy"
     assert by_id["bbp"].action == "buy"
     assert by_id["mom_10"].name == "모멘텀 (10)"
+
+
+def test_analyze_ohlcv_builds_gauges() -> None:
+    frame = _trending_ohlcv()
+    result = analyze_ohlcv(frame, ticker="TEST")
+    assert result.ticker == "TEST"
+    assert result.close == float(frame["close"].iloc[-1])
+    assert len(result.oscillators) == 11
+    assert len(result.moving_averages) == 12
+    assert result.ma_gauge.rating == "strong_buy"
+    assert result.overall_gauge.buy == result.oscillator_gauge.buy + result.ma_gauge.buy
+    assert result.pivots["classic"]["P"] is not None
