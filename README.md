@@ -16,4 +16,12 @@ uv run pytest
 
 ## 데이터 레이어 (Phase 1)
 
-`src/data/fetch.py`가 yfinance OHLCV를 `open/high/low/close/volume`으로 정규화한다. 네트워크 없는 파서 테스트는 `uv run pytest`로 실행한다.
+`src/data/fetch.py`가 yfinance OHLCV를 `open/high/low/close/volume`으로 정규화한다.
+
+## 지표·신호 (Phase 2)
+
+`src/indicators/`에서 오실레이터 11개, 이동평균 12개, 피봇 5방법을 계산하고 바이/셀/뉴트럴을 붙인다. 네트워크 없는 테스트:
+
+```bash
+uv run pytest
+```
