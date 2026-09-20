@@ -10,12 +10,13 @@ from data.fetch import demo_ohlcv
 from indicators.analyze import analyze_ohlcv
 
 
-def test_format_value_scales() -> None:
+def test_format_value_shows_two_decimals_like_tradingview() -> None:
     assert format_value(None) == "—"
-    assert format_value(2618) == "2,618"
-    assert format_value(-2618) == "-2,618"
-    assert format_value(51.2) == "51"
+    assert format_value(2618) == "2,618.00"
+    assert format_value(-2618) == "-2,618.00"
+    assert format_value(51.2) == "51.20"
     assert format_value(0.37) == "0.37"
+    assert format_value(118.91) == "118.91"
 
 
 def test_score_to_gauge_maps_minus_one_to_one() -> None:

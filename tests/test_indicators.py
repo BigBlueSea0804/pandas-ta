@@ -25,6 +25,29 @@ def _trending_ohlcv(n: int = 250) -> pd.DataFrame:
     )
 
 
+def _accelerating_ohlcv(n: int = 250) -> pd.DataFrame:
+    """모멘텀/MACD가 직전 봉보다 계속 커지는(가속 상승) 픽스처.
+
+    mom_10/MACD는 값의 부호가 아니라 직전 봉 대비 기울기(모멘텀) 또는
+    시그널선 대비 위치(MACD)로 액션이 정해지므로, 등속 상승(선형)에서는
+    모멘텀이 평평해져 뉴트럴이 된다. buy를 재현하려면 상승 속도 자체가
+    커지는 픽스처가 필요하다.
+    """
+    index = pd.date_range("2020-01-01", periods=n, freq="B")
+    i = np.arange(n, dtype="float64")
+    close = 100.0 + i * 0.3 + 0.003 * i**2
+    return pd.DataFrame(
+        {
+            "open": close - 0.2,
+            "high": close + 1.0,
+            "low": close - 1.0,
+            "close": close,
+            "volume": np.full(n, 1000.0),
+        },
+        index=index,
+    )
+
+
 def test_moving_averages_order_and_buy_on_uptrend() -> None:
     frame = _trending_ohlcv()
     signals = compute_moving_averages(frame)
@@ -80,12 +103,17 @@ def test_oscillators_return_eleven_named_rows() -> None:
     ]
     assert all(item.value is not None for item in signals)
     by_id = {item.id: item for item in signals}
-    assert by_id["mom_10"].action == "buy"
-    assert by_id["macd_12_26"].action == "buy"
     assert by_id["mom_10"].name == "모멘텀 (10)"
     last = frame.iloc[-1]
     ema13 = float(ta.ema(frame["close"], length=13).iloc[-1])
     assert by_id["bbp"].value == pytest.approx(float(last["high"] + last["low"] - 2 * ema13))
+
+
+def test_mom_and_macd_use_slope_not_sign() -> None:
+    frame = _accelerating_ohlcv()
+    signals = {item.id: item for item in compute_oscillators(frame)}
+    assert signals["mom_10"].action == "buy"
+    assert signals["macd_12_26"].action == "buy"
 
 
 def test_analyze_ohlcv_builds_gauges() -> None:

@@ -50,12 +50,6 @@ def action_banded(
     return "neutral"
 
 
-def action_signed(value: float | None) -> Action:
-    if value is None or value == 0:
-        return "neutral"
-    return "buy" if value > 0 else "sell"
-
-
 def action_ma(close: float | None, mean: float | None) -> Action:
     if close is None or mean is None:
         return "neutral"
@@ -70,18 +64,71 @@ def action_adx(
     adx: float | None,
     plus_di: float | None,
     minus_di: float | None,
-    previous_adx: float | None = None,
+    previous_plus_di: float | None = None,
+    previous_minus_di: float | None = None,
     *,
     trend_min: float = ADX_TREND_MIN,
 ) -> Action:
-    """TV Technical Ratings: ADX>20이고 DI 방향과 ADX 기울기가 같을 때만 신호."""
-    if adx is None or plus_di is None or minus_di is None or previous_adx is None:
+    """TV Technical Ratings: ADX>20이고 +DI/-DI가 이번 봉에 실제로 교차했을 때만 신호."""
+    if None in (adx, plus_di, minus_di, previous_plus_di, previous_minus_di):
         return "neutral"
-    if adx < trend_min:
+    if adx <= trend_min:
         return "neutral"
-    if plus_di > minus_di and adx > previous_adx:
+    if previous_plus_di < previous_minus_di and plus_di > minus_di:
         return "buy"
-    if minus_di > plus_di and adx < previous_adx:
+    if previous_plus_di > previous_minus_di and plus_di < minus_di:
+        return "sell"
+    return "neutral"
+
+
+def action_cross_band(
+    k: float | None,
+    d: float | None,
+    *,
+    oversold: float,
+    overbought: float,
+) -> Action:
+    """TV Stochastic/StochRSI: %K·%D가 모두 밴드를 넘고 서로 교차할 때만 신호.
+    단순히 %K가 밴드를 넘겼다고 신호를 내지 않는다(예: %K만 80 위여도 %D보다
+    높으면 상승이 이어지는 중이라 뉴트럴)."""
+    if k is None or d is None:
+        return "neutral"
+    if k < oversold and d < oversold and k > d:
+        return "buy"
+    if k > overbought and d > overbought and k < d:
+        return "sell"
+    return "neutral"
+
+
+def action_cci(value: float | None, previous: float | None) -> Action:
+    """TV: CCI가 밴드 밖에서 0 쪽으로 되돌아올 때만 신호 (직전 봉 대비 방향 필요)."""
+    if value is None or previous is None:
+        return "neutral"
+    if value < CCI_OVERSOLD and value > previous:
+        return "buy"
+    if value > CCI_OVERBOUGHT and value < previous:
+        return "sell"
+    return "neutral"
+
+
+def action_mom(value: float | None, previous: float | None) -> Action:
+    """TV: 모멘텀 값의 부호가 아니라 직전 봉 대비 기울기로 판단한다."""
+    if value is None or previous is None:
+        return "neutral"
+    if value > previous:
+        return "buy"
+    if value < previous:
+        return "sell"
+    return "neutral"
+
+
+def action_macd(macd: float | None, signal: float | None) -> Action:
+    """TV: MACD 라인을 0이 아니라 시그널선과 비교한다."""
+    if macd is None or signal is None:
+        return "neutral"
+    if macd > signal:
+        return "buy"
+    if macd < signal:
         return "sell"
     return "neutral"
 
@@ -129,16 +176,12 @@ def action_rsi(value: float | None) -> Action:
     return action_banded(value, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT)
 
 
-def action_stoch(value: float | None) -> Action:
-    return action_banded(value, oversold=STOCH_OVERSOLD, overbought=STOCH_OVERBOUGHT)
+def action_stoch(k: float | None, d: float | None) -> Action:
+    return action_cross_band(k, d, oversold=STOCH_OVERSOLD, overbought=STOCH_OVERBOUGHT)
 
 
-def action_cci(value: float | None) -> Action:
-    return action_banded(value, oversold=CCI_OVERSOLD, overbought=CCI_OVERBOUGHT)
-
-
-def action_stochrsi(value: float | None) -> Action:
-    return action_banded(value, oversold=STOCHRSI_OVERSOLD, overbought=STOCHRSI_OVERBOUGHT)
+def action_stochrsi(k: float | None, d: float | None) -> Action:
+    return action_cross_band(k, d, oversold=STOCHRSI_OVERSOLD, overbought=STOCHRSI_OVERBOUGHT)
 
 
 def action_willr(value: float | None) -> Action:
