@@ -79,12 +79,13 @@ def test_oscillators_return_eleven_named_rows() -> None:
         "uo",
     ]
     assert all(item.value is not None for item in signals)
-    # 강한 상승 추세면 모멘텀·MACD·BBP는 양수(바이)
     by_id = {item.id: item for item in signals}
     assert by_id["mom_10"].action == "buy"
     assert by_id["macd_12_26"].action == "buy"
-    assert by_id["bbp"].action == "buy"
     assert by_id["mom_10"].name == "모멘텀 (10)"
+    last = frame.iloc[-1]
+    ema13 = float(ta.ema(frame["close"], length=13).iloc[-1])
+    assert by_id["bbp"].value == pytest.approx(float(last["high"] + last["low"] - 2 * ema13))
 
 
 def test_analyze_ohlcv_builds_gauges() -> None:

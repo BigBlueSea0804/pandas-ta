@@ -70,24 +70,57 @@ def action_adx(
     adx: float | None,
     plus_di: float | None,
     minus_di: float | None,
+    previous_adx: float | None = None,
     *,
     trend_min: float = ADX_TREND_MIN,
 ) -> Action:
-    if adx is None or plus_di is None or minus_di is None or adx < trend_min:
+    """TV Technical Ratings: ADX>20이고 DI 방향과 ADX 기울기가 같을 때만 신호."""
+    if adx is None or plus_di is None or minus_di is None or previous_adx is None:
         return "neutral"
-    if plus_di > minus_di:
+    if adx < trend_min:
+        return "neutral"
+    if plus_di > minus_di and adx > previous_adx:
         return "buy"
-    if minus_di > plus_di:
+    if minus_di > plus_di and adx < previous_adx:
         return "sell"
     return "neutral"
 
 
-def action_ao(value: float | None, previous: float | None) -> Action:
+def action_ao(
+    value: float | None,
+    previous: float | None,
+    previous2: float | None = None,
+) -> Action:
+    """TV: 제로라인 돌파 또는 같은 부호에서 접시(saucer) 반전."""
     if value is None or previous is None:
         return "neutral"
-    if value > 0 and value > previous:
+    if previous <= 0 < value:
         return "buy"
-    if value < 0 and value < previous:
+    if previous >= 0 > value:
+        return "sell"
+    if previous2 is None:
+        return "neutral"
+    if value > 0 and previous > 0 and value > previous and previous < previous2:
+        return "buy"
+    if value < 0 and previous < 0 and value < previous and previous > previous2:
+        return "sell"
+    return "neutral"
+
+
+def action_bbp(
+    close: float | None,
+    ema: float | None,
+    bull_power: float | None,
+    bear_power: float | None,
+    previous_bull: float | None,
+    previous_bear: float | None,
+) -> Action:
+    """TV Elder-Ray: 상승장+BearPower 음수 반등 / 하락장+BullPower 양수 약화."""
+    if None in (close, ema, bull_power, bear_power):
+        return "neutral"
+    if close > ema and bear_power < 0 and previous_bear is not None and bear_power > previous_bear:
+        return "buy"
+    if close < ema and bull_power > 0 and previous_bull is not None and bull_power < previous_bull:
         return "sell"
     return "neutral"
 

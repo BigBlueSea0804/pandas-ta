@@ -6,11 +6,12 @@ import pandas as pd
 import pandas_ta as ta
 
 from config import BBP_EMA_LENGTH
-from indicators._series import last_number, last_two
+from indicators._series import last_number, last_three, last_two
 from indicators.signals import (
     Signal,
     action_adx,
     action_ao,
+    action_bbp,
     action_cci,
     action_rsi,
     action_signed,
@@ -21,6 +22,20 @@ from indicators.signals import (
 )
 
 
+def commodity_channel_index(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 20) -> pd.Series:
+    """Typical price 대비 동일 윈도우 MAD 기반 CCI."""
+    typical = (high + low + close) / 3.0
+
+    def _cci(window: pd.Series) -> float:
+        mean = float(window.mean())
+        mad = float((window - mean).abs().mean())
+        if mad == 0:
+            return float("nan")
+        return (float(window.iloc[-1]) - mean) / (0.015 * mad)
+
+    return typical.rolling(length).apply(_cci, raw=False)
+
+
 def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
     high = ohlcv["high"]
     low = ohlcv["low"]
@@ -28,14 +43,14 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
 
     rsi = last_number(ta.rsi(close, length=14))
     stoch_k = last_number(ta.stoch(high, low, close, k=14, d=3, smooth_k=3), prefix="STOCHk")
-    cci = last_number(ta.cci(high, low, close, length=20))
+    cci = last_number(commodity_channel_index(high, low, close, length=20))
 
     adx_df = ta.adx(high, low, close, length=14, tvmode=True)
-    adx = last_number(adx_df, prefix="ADX_14")
+    adx, prev_adx = last_two(adx_df, prefix="ADX_14")
     plus_di = last_number(adx_df, prefix="DMP_14")
     minus_di = last_number(adx_df, prefix="DMN_14")
 
-    ao_value, ao_prev = last_two(ta.ao(high, low))
+    ao_value, ao_prev, ao_prev2 = last_three(ta.ao(high, low))
     mom = last_number(ta.mom(close, length=10))
     macd = last_number(ta.macd(close, fast=12, slow=26, signal=9), prefix="MACD_12")
     stochrsi_k = last_number(
@@ -43,11 +58,16 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
         prefix="STOCHRSIk",
     )
     willr = last_number(ta.willr(high, low, close, length=14))
-    bbp = None
+
+    ema13 = ta.ema(close, length=BBP_EMA_LENGTH)
+    bull = high - ema13
+    bear = low - ema13
+    bbp = last_number(bull + bear)
     last_close = last_number(close)
-    ema13 = last_number(ta.ema(close, length=BBP_EMA_LENGTH))
-    if last_close is not None and ema13 is not None:
-        bbp = last_close - ema13
+    last_ema = last_number(ema13)
+    bull_now, bull_prev = last_two(bull)
+    bear_now, bear_prev = last_two(bear)
+
     uo = last_number(ta.uo(high, low, close, fast=7, medium=14, slow=28))
 
     return [
@@ -63,9 +83,9 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
             id="adx_14",
             name="애버리지 디렉셔널 인덱스 (14)",
             value=adx,
-            action=action_adx(adx, plus_di, minus_di),
+            action=action_adx(adx, plus_di, minus_di, prev_adx),
         ),
-        Signal(id="ao", name="오썸 오실레이터", value=ao_value, action=action_ao(ao_value, ao_prev)),
+        Signal(id="ao", name="오썸 오실레이터", value=ao_value, action=action_ao(ao_value, ao_prev, ao_prev2)),
         Signal(id="mom_10", name="모멘텀 (10)", value=mom, action=action_signed(mom)),
         Signal(id="macd_12_26", name="MACD 레벨 (12, 26)", value=macd, action=action_signed(macd)),
         Signal(
@@ -80,7 +100,12 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
             value=willr,
             action=action_willr(willr),
         ),
-        Signal(id="bbp", name="불 베어 파워", value=bbp, action=action_signed(bbp)),
+        Signal(
+            id="bbp",
+            name="불 베어 파워",
+            value=bbp,
+            action=action_bbp(last_close, last_ema, bull_now, bear_now, bull_prev, bear_prev),
+        ),
         Signal(
             id="uo",
             name="얼티미트 오실레이터 (7, 14, 28)",

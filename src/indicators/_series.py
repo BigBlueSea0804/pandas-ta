@@ -30,3 +30,15 @@ def last_two(series: pd.Series | pd.DataFrame | None, prefix: str | None = None)
     current = float(values.iloc[-1])
     previous = float(values.iloc[-2]) if len(values) > 1 else None
     return current, previous
+
+
+def last_three(
+    series: pd.Series | pd.DataFrame | None, prefix: str | None = None
+) -> tuple[float | None, float | None, float | None]:
+    values = as_series(series, prefix=prefix).dropna()
+    if values.empty:
+        return None, None, None
+    current = float(values.iloc[-1])
+    previous = float(values.iloc[-2]) if len(values) > 1 else None
+    previous2 = float(values.iloc[-3]) if len(values) > 2 else None
+    return current, previous, previous2

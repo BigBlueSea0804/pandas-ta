@@ -33,3 +33,7 @@ uv run streamlit run src/dashboard/app.py
 ```
 
 사이드바에서 티커·기간을 고르거나, 네트워크 없이 보려면 샘플 데이터를 선택한다.
+
+## TradingView 대조 (Phase 5)
+
+일봉 기준으로 TradingView Technicals와 맞춰 AO는 제로크로스·접시, ADX는 20 이상+기울기, BBP는 Elder-Ray(`high+low−2×EMA13`)를 쓴다. CCI는 pandas-ta 대신 typical price MAD 공식을 쓴다.
