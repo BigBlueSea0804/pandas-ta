@@ -26,15 +26,16 @@ class GaugeSummary:
 
 
 def rating_from_score(score: float) -> Rating:
-    if score <= -SCORE_STRONG:
+    """TV ratingStatus와 같은 경계. 임계값과 정확히 같은 값은 약한 쪽으로 간다."""
+    if score < -SCORE_STRONG:
         return "strong_sell"
-    if score <= -SCORE_LEAN:
+    if score < -SCORE_LEAN:
         return "sell"
-    if score < SCORE_LEAN:
-        return "neutral"
-    if score < SCORE_STRONG:
+    if score > SCORE_STRONG:
+        return "strong_buy"
+    if score > SCORE_LEAN:
         return "buy"
-    return "strong_buy"
+    return "neutral"
 
 
 def summarize_signals(signals: list[Signal]) -> GaugeSummary:

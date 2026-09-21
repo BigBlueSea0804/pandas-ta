@@ -54,6 +54,8 @@ DEFAULT_TIMEFRAME = "1일"
 
 MA_PERIODS = (10, 20, 30, 50, 100, 200)
 BBP_EMA_LENGTH = 13
+# TV TechnicalRating의 priceAvg. 스토캐스틱 RSI와 BBP가 추세 필터로 쓴다.
+TREND_EMA_LENGTH = 50
 
 Action = Literal["buy", "sell", "neutral"]
 ACTION_LABELS = {"buy": "바이", "sell": "셀", "neutral": "뉴트럴"}

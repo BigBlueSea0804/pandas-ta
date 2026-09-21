@@ -12,15 +12,18 @@ from indicators.signals import (
     action_rsi,
     action_stoch,
     action_stochrsi,
+    action_uo,
     action_willr,
 )
 
 
-def test_rsi_bands() -> None:
-    assert action_rsi(30) == "buy"
-    assert action_rsi(29) == "buy"
-    assert action_rsi(50) == "neutral"
-    assert action_rsi(70) == "sell"
+def test_rsi_needs_reversal_from_band() -> None:
+    # TV: 과매도에서 반등할 때만 바이, 과매수에서 꺾일 때만 셀.
+    assert action_rsi(28, 25) == "buy"
+    assert action_rsi(28, 32) == "neutral"
+    assert action_rsi(72, 75) == "sell"
+    assert action_rsi(72, 68) == "neutral"
+    assert action_rsi(50, 48) == "neutral"
 
 
 def test_stoch_needs_band_and_kd_cross() -> None:
@@ -32,10 +35,13 @@ def test_stoch_needs_band_and_kd_cross() -> None:
     assert action_stoch(None, 90) == "neutral"
 
 
-def test_stochrsi_needs_band_and_kd_cross() -> None:
-    assert action_stochrsi(15, 10) == "buy"
-    assert action_stochrsi(94.6, 96) == "sell"
-    assert action_stochrsi(94.6, 80) == "neutral"
+def test_stochrsi_needs_band_cross_and_counter_trend() -> None:
+    # TV: 교차에 더해 추세 필터(EMA50)가 반대 방향이어야 신호가 난다.
+    assert action_stochrsi(15, 10, close=90, trend_ema=100) == "buy"
+    assert action_stochrsi(15, 10, close=110, trend_ema=100) == "neutral"
+    assert action_stochrsi(94.6, 96, close=110, trend_ema=100) == "sell"
+    assert action_stochrsi(94.6, 96, close=90, trend_ema=100) == "neutral"
+    assert action_stochrsi(94.6, 80, close=110, trend_ema=100) == "neutral"
 
 
 def test_cci_needs_reversal_from_band() -> None:
@@ -80,13 +86,16 @@ def test_ma_vs_close() -> None:
     assert action_ma(100, None) == "neutral"
 
 
-def test_adx_needs_trend_and_di_cross() -> None:
-    assert action_adx(19, 30, 10, 20, 25) == "neutral"
-    assert action_adx(25, 30, 10, 20, 25) == "buy"
-    assert action_adx(25, 30, 10, 30, 10) == "neutral"
-    assert action_adx(25, 10, 30, 25, 20) == "sell"
-    assert action_adx(25, 20, 20, 20, 20) == "neutral"
-    assert action_adx(25, 30, 10, None, 25) == "neutral"
+def test_adx_needs_trend_strengthening_and_di_direction() -> None:
+    """TV: ADX>20 이고 ADX가 직전 봉보다 올랐을 때만 DI 방향을 따른다."""
+    assert action_adx(25, 30, 10, 24) == "buy"
+    assert action_adx(25, 10, 30, 24) == "sell"
+    # ADX가 20 이하이거나 약해지는 중이면 DI 방향과 무관하게 뉴트럴
+    assert action_adx(19, 30, 10, 18) == "neutral"
+    assert action_adx(25, 30, 10, 26) == "neutral"
+    assert action_adx(25, 10, 30, 26) == "neutral"
+    assert action_adx(25, 20, 20, 24) == "neutral"
+    assert action_adx(25, 30, 10, None) == "neutral"
 
 
 def test_ao_zero_cross_and_saucer() -> None:
@@ -100,90 +109,46 @@ def test_ao_zero_cross_and_saucer() -> None:
 
 
 def test_bbp_elder_rules() -> None:
-    assert action_bbp(close=110, ema=100, bull_power=5, bear_power=-2, previous_bull=6, previous_bear=-4) == "buy"
-    assert action_bbp(close=110, ema=100, bull_power=5, bear_power=1, previous_bull=6, previous_bear=0) == "neutral"
-    assert action_bbp(close=90, ema=100, bull_power=2, bear_power=-5, previous_bull=4, previous_bear=-6) == "sell"
-    assert action_bbp(close=90, ema=100, bull_power=-1, bear_power=-5, previous_bull=0, previous_bear=-6) == "neutral"
+    # 추세 필터는 EMA13이 아니라 EMA50(trend_ema)이다.
+    assert action_bbp(close=110, trend_ema=100, bull_power=5, bear_power=-2, previous_bull=6, previous_bear=-4) == "buy"
+    assert action_bbp(close=110, trend_ema=100, bull_power=5, bear_power=1, previous_bull=6, previous_bear=0) == "neutral"
+    assert action_bbp(close=90, trend_ema=100, bull_power=2, bear_power=-5, previous_bull=4, previous_bear=-6) == "sell"
+    assert action_bbp(close=90, trend_ema=100, bull_power=-1, bear_power=-5, previous_bull=0, previous_bear=-6) == "neutral"
 
 
-def _ichimoku(**overrides: float | None) -> str:
-    """바이가 성립하는 기본값에서 한 조건만 바꿔 보기 위한 헬퍼."""
-    args: dict[str, float | None] = {
-        "close": 110.0,
-        "conversion": 105.0,
-        "base": 100.0,
-        "previous_conversion": 99.0,
-        "previous_base": 100.0,
-        "lead1": 104.0,
-        "lead2": 103.0,
-        "cloud_lead1": 95.0,
-        "cloud_lead2": 90.0,
-    }
-    args.update(overrides)
-    return action_ichimoku(**args)  # type: ignore[arg-type]
+def test_uo_follows_trend_not_counter_trend() -> None:
+    # TV: UO는 70 위면 바이, 30 아래면 셀 (역추세로 읽지 않는다).
+    assert action_uo(75) == "buy"
+    assert action_uo(25) == "sell"
+    assert action_uo(50) == "neutral"
+    assert action_uo(70) == "neutral"
+    assert action_uo(30) == "neutral"
+    assert action_uo(None) == "neutral"
 
 
-def test_ichimoku_buy_needs_every_condition() -> None:
-    assert _ichimoku() == "buy"
-    # 1) 종가가 구름대 안이거나 아래면 뉴트럴
-    assert _ichimoku(cloud_lead1=115.0) == "neutral"
-    # 2) 종가가 기준선 위여야 한다 (구름대는 넘었지만 기준선 아래)
-    assert _ichimoku(close=98.0, cloud_lead1=95.0, cloud_lead2=90.0) == "neutral"
-    # 3) 전환선이 기준선 위여야 한다
-    assert _ichimoku(conversion=99.0) == "neutral"
-    assert _ichimoku(conversion=100.0) == "neutral"
-    # 4) 그 교차가 이번 봉에 막 일어났어야 한다 (이미 위에 있던 상태면 뉴트럴)
-    assert _ichimoku(previous_conversion=101.0) == "neutral"
-    # 5) 앞으로 그려질 선행스팬 A가 B보다 위여야 한다
-    assert _ichimoku(lead1=103.0, lead2=104.0) == "neutral"
-
-
-def test_ichimoku_sell_is_mirrored() -> None:
-    sell = {
-        "close": 90.0,
-        "conversion": 95.0,
-        "base": 100.0,
-        "previous_conversion": 101.0,
-        "previous_base": 100.0,
-        "lead1": 96.0,
-        "lead2": 97.0,
-        "cloud_lead1": 105.0,
-        "cloud_lead2": 110.0,
-    }
-    assert action_ichimoku(**sell) == "sell"  # type: ignore[arg-type]
-    assert action_ichimoku(**{**sell, "cloud_lead1": 85.0}) == "neutral"  # type: ignore[arg-type]
-    assert action_ichimoku(**{**sell, "conversion": 100.0}) == "neutral"  # type: ignore[arg-type]
-    assert action_ichimoku(**{**sell, "previous_conversion": 99.0}) == "neutral"  # type: ignore[arg-type]
-    assert action_ichimoku(**{**sell, "lead1": 98.0, "lead2": 97.0}) == "neutral"  # type: ignore[arg-type]
-
-
-def test_ichimoku_uses_shifted_cloud_not_the_future_one() -> None:
-    """현재 위치의 구름대는 26봉 전에 계산된 값이라, 앞으로 그려질 값과 구분해야 한다."""
-    # 앞으로 그려질 구름대(lead1/lead2)는 종가 위에 있어도 무방하다.
-    assert _ichimoku(lead1=1_000.0, lead2=999.0) == "buy"
-    # 반대로 현재 위치의 구름대가 종가 위면 신호가 나오지 않는다.
-    assert _ichimoku(cloud_lead1=1_000.0, cloud_lead2=999.0) == "neutral"
-
-
-def test_ichimoku_missing_inputs_are_neutral() -> None:
-    assert _ichimoku(cloud_lead2=None) == "neutral"
-    assert _ichimoku(previous_conversion=None) == "neutral"
+def test_ichimoku_needs_full_cloud_alignment() -> None:
+    """TV: lead1[26]>lead2[26] > 기준선 > 전환선 > 종가가 한 방향으로 줄을 서야 신호."""
+    # 바이: 구름 양전환 + 기준선 > 구름 상단 + 전환선 > 기준선 + 종가 > 전환선
+    assert action_ichimoku(close=120, conversion=115, base=110, lead1_back=105, lead2_back=100) == "buy"
+    # 종가가 전환선 아래면 바이 불성립
+    assert action_ichimoku(close=112, conversion=115, base=110, lead1_back=105, lead2_back=100) == "neutral"
+    # 셀: 전부 반대 방향
+    assert action_ichimoku(close=100, conversion=105, base=110, lead1_back=115, lead2_back=120) == "sell"
+    # 종가가 전환선 위면 셀 불성립 (IBM 주봉이 이 경우였다)
+    assert action_ichimoku(close=229.55, conversion=225.50, base=265.82, lead1_back=245.66, lead2_back=265.82) == "neutral"
+    assert action_ichimoku(None, 115, 110, 105, 100) == "neutral"
 
 
 def test_ichimoku_ibm_daily_is_neutral_not_sell() -> None:
     """NYSE:IBM 일봉 실측값. 종가가 기준선 아래라 종전 규칙은 셀이었지만,
-    전환선(240.5975)이 기준선(239.6075) 위라 TradingView는 뉴트럴로 본다."""
+    종가(229.55)가 전환선(240.5975) 위여서 TradingView는 뉴트럴로 본다."""
     assert (
         action_ichimoku(
             close=229.55,
             conversion=240.5975,
             base=239.6075,
-            previous_conversion=241.0075,
-            previous_base=239.6075,
-            lead1=240.1025,
-            lead2=251.505,
-            cloud_lead1=240.34875,
-            cloud_lead2=265.825,
+            lead1_back=240.34875,
+            lead2_back=265.825,
         )
         == "neutral"
     )

@@ -35,21 +35,6 @@ class Signal:
         return ACTION_LABELS[self.action]
 
 
-def action_banded(
-    value: float | None,
-    *,
-    oversold: float,
-    overbought: float,
-) -> Action:
-    if value is None:
-        return "neutral"
-    if value <= oversold:
-        return "buy"
-    if value >= overbought:
-        return "sell"
-    return "neutral"
-
-
 def action_ma(close: float | None, mean: float | None) -> Action:
     if close is None or mean is None:
         return "neutral"
@@ -60,82 +45,25 @@ def action_ma(close: float | None, mean: float | None) -> Action:
     return "neutral"
 
 
-def action_ichimoku(
-    close: float | None,
-    conversion: float | None,
-    base: float | None,
-    previous_conversion: float | None,
-    previous_base: float | None,
-    lead1: float | None,
-    lead2: float | None,
-    cloud_lead1: float | None,
-    cloud_lead2: float | None,
-) -> Action:
-    """TV Technical Ratings: 일목은 기준선 하나가 아니라 구름대 전체로 판단한다.
-
-    다른 이동평균처럼 "종가 > 기준선 -> 바이"로 보지 않고, 아래 다섯 조건이 모두
-    맞을 때만 신호를 낸다.
-      1) 종가가 현재 위치의 구름대(26봉 전에 계산돼 지금 자리에 그려진
-         선행스팬 A/B) 밖에 있다
-      2) 종가가 기준선 기준으로도 같은 방향이다
-      3) 전환선이 기준선 기준으로도 같은 방향이다
-      4) 그 전환선·기준선 교차가 이번 봉에 막 일어났다(직전 봉은 반대였다)
-      5) 이번 봉에서 계산한(=앞으로 그려질) 선행스팬 A/B의 방향도 같다
-    그래서 종가가 기준선 아래여도 셀이 아니라 뉴트럴인 경우가 흔하다.
-
-    cloud_lead1/cloud_lead2는 26봉 전 값(현재 위치의 구름대), lead1/lead2는
-    이번 봉에서 계산한 값이다.
-    """
-    if None in (
-        close,
-        conversion,
-        base,
-        previous_conversion,
-        previous_base,
-        lead1,
-        lead2,
-        cloud_lead1,
-        cloud_lead2,
-    ):
-        return "neutral"
-    cloud_top = max(cloud_lead1, cloud_lead2)
-    cloud_bottom = min(cloud_lead1, cloud_lead2)
-    if (
-        close > cloud_top
-        and close > base
-        and conversion > base
-        and previous_conversion <= previous_base
-        and lead1 > lead2
-    ):
-        return "buy"
-    if (
-        close < cloud_bottom
-        and close < base
-        and conversion < base
-        and previous_conversion >= previous_base
-        and lead1 < lead2
-    ):
-        return "sell"
-    return "neutral"
-
-
 def action_adx(
     adx: float | None,
     plus_di: float | None,
     minus_di: float | None,
-    previous_plus_di: float | None = None,
-    previous_minus_di: float | None = None,
+    previous_adx: float | None = None,
     *,
     trend_min: float = ADX_TREND_MIN,
 ) -> Action:
-    """TV Technical Ratings: ADX>20이고 +DI/-DI가 이번 봉에 실제로 교차했을 때만 신호."""
-    if None in (adx, plus_di, minus_di, previous_plus_di, previous_minus_di):
+    """TV: 추세가 있고(ADX>20) 강해지는 중일 때(ADX 상승) DI 방향을 따른다.
+
+    교차 시점은 보지 않는다. 양쪽 모두 ADX가 직전 봉보다 올라야 신호가 난다.
+    """
+    if None in (adx, plus_di, minus_di, previous_adx):
         return "neutral"
-    if adx <= trend_min:
+    if adx <= trend_min or adx <= previous_adx:
         return "neutral"
-    if previous_plus_di < previous_minus_di and plus_di > minus_di:
+    if plus_di > minus_di:
         return "buy"
-    if previous_plus_di > previous_minus_di and plus_di < minus_di:
+    if plus_di < minus_di:
         return "sell"
     return "neutral"
 
@@ -225,32 +153,70 @@ def action_ao(
 
 def action_bbp(
     close: float | None,
-    ema: float | None,
+    trend_ema: float | None,
     bull_power: float | None,
     bear_power: float | None,
     previous_bull: float | None,
     previous_bear: float | None,
 ) -> Action:
-    """TV Elder-Ray: 상승장+BearPower 음수 반등 / 하락장+BullPower 양수 약화."""
-    if None in (close, ema, bull_power, bear_power):
+    """TV Elder-Ray: 상승장(종가>EMA50)에서 BearPower가 음수인 채 반등하면 바이,
+    하락장에서 BullPower가 양수인 채 약해지면 셀. 추세 판정은 EMA13이 아니라 EMA50이다."""
+    if None in (close, trend_ema, bull_power, bear_power):
         return "neutral"
-    if close > ema and bear_power < 0 and previous_bear is not None and bear_power > previous_bear:
+    if close > trend_ema and bear_power < 0 and previous_bear is not None and bear_power > previous_bear:
         return "buy"
-    if close < ema and bull_power > 0 and previous_bull is not None and bull_power < previous_bull:
+    if close < trend_ema and bull_power > 0 and previous_bull is not None and bull_power < previous_bull:
         return "sell"
     return "neutral"
 
 
-def action_rsi(value: float | None) -> Action:
-    return action_banded(value, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT)
+def action_ichimoku(
+    close: float | None,
+    conversion: float | None,
+    base: float | None,
+    lead1_back: float | None,
+    lead2_back: float | None,
+) -> Action:
+    """TV: 구름(26봉 전에 계산된 선행스팬)·기준선·전환선·종가가 한 방향으로 줄을 서야 신호.
+
+    lead1_back/lead2_back은 pinescript의 lead1[26]/lead2[26], 즉 26봉 전에 계산된
+    선행스팬 A/B다(현재 봉에 그려진 구름).
+    """
+    if None in (close, conversion, base, lead1_back, lead2_back):
+        return "neutral"
+    if lead1_back > lead2_back and base > lead1_back and conversion > base and close > conversion:
+        return "buy"
+    if lead1_back < lead2_back and base < lead1_back and conversion < base and close < conversion:
+        return "sell"
+    return "neutral"
+
+
+def action_rsi(value: float | None, previous: float | None) -> Action:
+    return action_band_reversal(value, previous, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT)
 
 
 def action_stoch(k: float | None, d: float | None) -> Action:
     return action_cross_band(k, d, oversold=STOCH_OVERSOLD, overbought=STOCH_OVERBOUGHT)
 
 
-def action_stochrsi(k: float | None, d: float | None) -> Action:
-    return action_cross_band(k, d, oversold=STOCHRSI_OVERSOLD, overbought=STOCHRSI_OVERBOUGHT)
+def action_stochrsi(
+    k: float | None,
+    d: float | None,
+    close: float | None,
+    trend_ema: float | None,
+) -> Action:
+    """TV: 스토캐스틱 RSI는 추세와 반대 방향으로만 신호를 낸다.
+
+    하락장(종가<EMA50)에서 과매도 교차면 바이, 상승장에서 과매수 교차면 셀이다.
+    """
+    if close is None or trend_ema is None:
+        return "neutral"
+    crossed = action_cross_band(k, d, oversold=STOCHRSI_OVERSOLD, overbought=STOCHRSI_OVERBOUGHT)
+    if crossed == "buy" and close < trend_ema:
+        return "buy"
+    if crossed == "sell" and close > trend_ema:
+        return "sell"
+    return "neutral"
 
 
 def action_cci(value: float | None, previous: float | None) -> Action:
@@ -262,4 +228,11 @@ def action_willr(value: float | None, previous: float | None) -> Action:
 
 
 def action_uo(value: float | None) -> Action:
-    return action_banded(value, oversold=UO_OVERSOLD, overbought=UO_OVERBOUGHT)
+    """TV: UO는 역추세가 아니라 순추세로 읽는다. 70 위면 바이, 30 아래면 셀."""
+    if value is None:
+        return "neutral"
+    if value > UO_OVERBOUGHT:
+        return "buy"
+    if value < UO_OVERSOLD:
+        return "sell"
+    return "neutral"

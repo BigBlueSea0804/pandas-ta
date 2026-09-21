@@ -49,14 +49,27 @@ def test_overall_combines_oscillator_and_ma() -> None:
     assert overall.rating == "buy"
 
 
-def test_overall_matches_tradingview_ibm_snapshot() -> None:
-    """TradingView IBM 일봉 스냅샷(Recommend.MA=-14/15, Other=-3/11) 회귀."""
-    oscillators = _votes(*["sell"] * 3, *["neutral"] * 8)
-    moving_averages = _votes(*["sell"] * 14, "neutral")
-    osc, ma, overall = summarize_groups(oscillators, moving_averages)
+def test_overall_matches_tradingview_snapshots() -> None:
+    """TradingView 실측 스냅샷 회귀 (Recommend.MA / Other / All)."""
+    # IBM 일봉: 하락 국면
+    osc, ma, overall = summarize_groups(
+        _votes(*["sell"] * 3, *["neutral"] * 8),
+        _votes(*["sell"] * 14, "neutral"),
+    )
     assert osc.score == pytest.approx(-0.2727272727272727)
     assert ma.score == pytest.approx(-0.9333333333333333)
     assert overall.score == pytest.approx(-0.603030303030303)
+    assert overall.rating == "strong_sell"
+
+    # NVDA 일봉: 상승 국면 (일목만 뉴트럴)
+    osc, ma, overall = summarize_groups(
+        _votes("buy", *["sell"] * 2, *["neutral"] * 8),
+        _votes(*["buy"] * 14, "neutral"),
+    )
+    assert osc.score == pytest.approx(-0.09090909090909091)
+    assert ma.score == pytest.approx(0.9333333333333333)
+    assert overall.score == pytest.approx(0.4212121212121212)
+    assert overall.rating == "buy"
 
 
 def test_missing_values_are_excluded_from_denominator() -> None:
@@ -74,10 +87,12 @@ def test_empty_signals_are_neutral() -> None:
 
 
 def test_rating_boundaries() -> None:
-    assert rating_from_score(-0.5) == "strong_sell"
-    assert rating_from_score(-0.1) == "sell"
-    assert rating_from_score(-0.09) == "neutral"
-    assert rating_from_score(0.09) == "neutral"
-    assert rating_from_score(0.1) == "buy"
-    assert rating_from_score(0.49) == "buy"
-    assert rating_from_score(0.5) == "strong_buy"
+    """TV ratingStatus와 같은 strict 경계 (임계값과 같은 값은 약한 쪽)."""
+    assert rating_from_score(-0.51) == "strong_sell"
+    assert rating_from_score(-0.5) == "sell"
+    assert rating_from_score(-0.11) == "sell"
+    assert rating_from_score(-0.1) == "neutral"
+    assert rating_from_score(0.1) == "neutral"
+    assert rating_from_score(0.11) == "buy"
+    assert rating_from_score(0.5) == "buy"
+    assert rating_from_score(0.51) == "strong_buy"
