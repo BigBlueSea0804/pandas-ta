@@ -26,15 +26,16 @@ class GaugeSummary:
 
 
 def rating_from_score(score: float) -> Rating:
-    if score <= -SCORE_STRONG:
+    """TV ratingStatus와 같은 경계. 임계값과 정확히 같은 값은 약한 쪽으로 간다."""
+    if score < -SCORE_STRONG:
         return "strong_sell"
-    if score <= -SCORE_LEAN:
+    if score < -SCORE_LEAN:
         return "sell"
-    if score < SCORE_LEAN:
-        return "neutral"
-    if score < SCORE_STRONG:
+    if score > SCORE_STRONG:
+        return "strong_buy"
+    if score > SCORE_LEAN:
         return "buy"
-    return "strong_buy"
+    return "neutral"
 
 
 def summarize_signals(signals: list[Signal]) -> GaugeSummary:
@@ -53,11 +54,25 @@ def summarize_signals(signals: list[Signal]) -> GaugeSummary:
     )
 
 
+def combine_gauges(oscillator: GaugeSummary, moving_average: GaugeSummary) -> GaugeSummary:
+    """TV 요약 게이지: 카운트는 두 그룹의 합, 등급은 두 그룹 등급의 평균이다.
+
+    두 그룹 크기가 11 대 15로 다르기 때문에, 26표를 한 번에 세는 것과 값이 다르다.
+    """
+    score = (oscillator.score + moving_average.score) / 2
+    return GaugeSummary(
+        sell=oscillator.sell + moving_average.sell,
+        neutral=oscillator.neutral + moving_average.neutral,
+        buy=oscillator.buy + moving_average.buy,
+        score=score,
+        rating=rating_from_score(score),
+    )
+
+
 def summarize_groups(
     oscillators: list[Signal],
     moving_averages: list[Signal],
 ) -> tuple[GaugeSummary, GaugeSummary, GaugeSummary]:
     oscillator_gauge = summarize_signals(oscillators)
     ma_gauge = summarize_signals(moving_averages)
-    overall_gauge = summarize_signals([*oscillators, *moving_averages])
-    return oscillator_gauge, ma_gauge, overall_gauge
+    return oscillator_gauge, ma_gauge, combine_gauges(oscillator_gauge, ma_gauge)

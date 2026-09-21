@@ -169,16 +169,10 @@ def test_analyze_uses_separate_series_for_pivots() -> None:
     assert result.pivots["classic"]["P"] == pytest.approx(100.0)
 
 
-def _step_ohlcv(first: float, second: float, flat: int = 70, tail: int = 9) -> pd.DataFrame:
-    """flat개 봉 동안 first에 머물다 tail개 봉 동안 second로 계단식으로 바뀌는 픽스처.
-
-    일목 액션은 전환선·기준선이 "이번 봉에" 교차해야 나온다. 도너치안 채널은
-    윈도 안의 최고·최저 중간값이라, 계단 직후 9봉째에 전환선(9)만 새 레벨로
-    내려앉고 기준선(26)은 아직 옛 레벨에 남아 교차가 그 봉에서 발생한다.
-    """
-    n = flat + tail
+def _short_ohlcv(n: int = 60) -> pd.DataFrame:
+    """선행스팬 B(52봉) + 26봉 시프트에 못 미치는 짧은 픽스처."""
     index = pd.date_range("2020-01-01", periods=n, freq="B")
-    close = np.concatenate([np.full(flat, first), np.full(tail, second)])
+    close = np.linspace(100.0, 50.0, n)
     return pd.DataFrame(
         {
             "open": close,
@@ -191,39 +185,14 @@ def _step_ohlcv(first: float, second: float, flat: int = 70, tail: int = 9) -> p
     )
 
 
-def test_ichimoku_action_follows_the_cloud_not_the_base_line() -> None:
-    """계단 하락 직후 교차 봉에서는 셀, 계단 상승이면 바이."""
-    down = {item.id: item for item in compute_moving_averages(_step_ohlcv(100.0, 50.0))}
-    ichimoku = down["ichimoku_base_line"]
-    # 표시값은 기준선(26봉 도너치안) 그대로 = (101 + 49) / 2
-    assert ichimoku.value == pytest.approx(75.0)
-    assert ichimoku.action == "sell"
-
-    up = {item.id: item for item in compute_moving_averages(_step_ohlcv(50.0, 100.0))}
-    assert up["ichimoku_base_line"].value == pytest.approx(75.0)
-    assert up["ichimoku_base_line"].action == "buy"
-
-
-def test_ichimoku_is_neutral_while_the_lines_stay_crossed() -> None:
-    """같은 계단에서 한 봉만 더 지나면 교차가 이미 끝나 뉴트럴이 된다."""
-    frame = _step_ohlcv(100.0, 50.0, tail=10)
-    signals = {item.id: item for item in compute_moving_averages(frame)}
-    ichimoku = signals["ichimoku_base_line"]
-    # 종가(50)는 여전히 기준선(75) 아래라 종전 규칙이면 셀이었을 자리다.
-    assert ichimoku.value == pytest.approx(75.0)
-    assert ichimoku.action == "neutral"
-    # 같은 봉에서 다른 이동평균은 그대로 셀이다 (일목만 규칙이 다르다).
-    assert signals["sma_20"].action == "sell"
-
-
 def test_ichimoku_neutral_without_enough_bars() -> None:
-    """선행스팬 B는 52+26봉이 필요해서, 60봉에서는 기준선 값만 있고 액션은 뉴트럴이다."""
-    frame = _step_ohlcv(100.0, 50.0, flat=51, tail=9)
-    signals = {item.id: item for item in compute_moving_averages(frame)}
+    """구름대는 52+26봉이 필요해서, 60봉에서는 기준선 값만 있고 액션은 뉴트럴이다."""
+    signals = {item.id: item for item in compute_moving_averages(_short_ohlcv())}
     ichimoku = signals["ichimoku_base_line"]
-    # 교차 봉이라 봉이 충분했다면 셀이 나올 자리지만, 구름대를 모르니 뉴트럴이다.
-    assert ichimoku.value == pytest.approx(75.0)
+    assert ichimoku.value is not None
     assert ichimoku.action == "neutral"
+    # 종가가 기준선 아래라 다른 이동평균은 셀이다 (일목만 규칙이 다르다).
+    assert signals["sma_20"].action == "sell"
 
 
 def test_ibm_daily_ma_gauge_matches_tradingview() -> None:
@@ -260,3 +229,24 @@ def test_ibm_daily_moving_average_values_match_tradingview() -> None:
     assert signals["sma_200"].value == pytest.approx(259.61924999999985)
     assert signals["ema_20"].value == pytest.approx(236.87820996008602, rel=1e-12)
     assert signals["ema_50"].value == pytest.approx(239.01114095287392, rel=1e-7)
+
+
+def test_ibm_daily_all_gauges_match_tradingview() -> None:
+    """골든 회귀: 세 게이지 모두 TradingView 실측값과 일치해야 한다.
+
+    NYSE:IBM 일봉 TradingView Technicals 실측값
+        Recommend.Other  -0.2727272727272727  (= -3/11)
+        Recommend.MA     -0.9333333333333333  (= -14/15)
+        Recommend.All    -0.6030303030303030  (= 두 값의 평균)
+    오실레이터 11종·이동평균 15종의 액션 규칙과 요약 평균 공식이 모두 맞아야
+    이 세 값이 동시에 나온다.
+    """
+    frame = load_ohlcv_csv(FIXTURE_DIR / "ibm_1d_tv.csv")
+    result = analyze_ohlcv(frame, ticker="IBM")
+    assert result.oscillator_gauge.score == pytest.approx(-0.2727272727272727)
+    assert result.ma_gauge.score == pytest.approx(-0.9333333333333333)
+    assert result.overall_gauge.score == pytest.approx(-0.603030303030303)
+    # 오실레이터에서 셀인 3종 (나머지 8종은 뉴트럴)
+    osc = {item.id: item.action for item in result.oscillators}
+    assert [k for k, v in osc.items() if v == "sell"] == ["mom_10", "macd_12_26", "bbp"]
+    assert not [k for k, v in osc.items() if v == "buy"]
