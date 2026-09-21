@@ -2,7 +2,7 @@
 
 일봉 OHLCV로 오실레이터, 이동평균, 피봇을 계산하고 TradingView Technicals 스타일 게이지로 요약한다.
 
-시세는 [yfinance](https://github.com/ranaroussi/yfinance)에서 받고, 지표는 [pandas-ta](https://github.com/twopirllc/pandas-ta)와 직접 구현한 CCI·피봇을 쓴다.
+시세는 [yfinance](https://github.com/ranaroussi/yfinance)에서 받고, 지표는 [pandas-ta-classic](https://github.com/xgboosted/pandas-ta-classic)과 TradingView 정합을 위해 직접 구현한 우디 피봇·DM 피봇을 쓴다.
 
 구현 단계는 [docs/WORK_PLAN.md](docs/WORK_PLAN.md)에 있다.
 

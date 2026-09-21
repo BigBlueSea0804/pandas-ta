@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
-import pandas_ta as ta
+import pandas_ta_classic as ta
 
 from config import MA_PERIODS
 from indicators._series import last_number
@@ -51,7 +51,9 @@ def compute_moving_averages(ohlcv: pd.DataFrame) -> list[Signal]:
             )
         )
 
-    ichimoku_result = ta.ichimoku(high, low, close, tenkan=9, kijun=26, senkou=52)
+    # as_dataframe=False: pandas-ta-classic 다음 버전부터 기본 반환값이 튜플에서
+    # 단일 DataFrame으로 바뀔 예정이라, 지금 쓰는 튜플 형태를 명시해 경고를 끈다.
+    ichimoku_result = ta.ichimoku(high, low, close, tenkan=9, kijun=26, senkou=52, as_dataframe=False)
     ichimoku_df = ichimoku_result[0] if ichimoku_result is not None else None
     ichimoku_base = last_number(ichimoku_df, prefix="IKS_26")
     signals.append(
