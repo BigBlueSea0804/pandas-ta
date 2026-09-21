@@ -71,7 +71,7 @@ def main() -> None:
             ticker_name, frame, _bar_count, warning = _load_ohlcv(
                 ticker, timeframe_label, period_override
             )
-        analysis = analyze_ohlcv(frame, ticker=ticker_name)
+        analysis = analyze_ohlcv(frame, ticker=ticker_name, pivot_anchor=timeframe.pivot_anchor)
     except FetchError as exc:
         st.error(str(exc))
         return

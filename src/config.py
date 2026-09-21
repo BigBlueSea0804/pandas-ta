@@ -17,21 +17,31 @@ class Timeframe:
     label: str
     yf_interval: str
     period: str
+    pivot_anchor: str
     resample_rule: str | None = None
 
 
+# 피봇 앵커는 TradingView "Pivot Points Standard"의 Pivots timeframe=Auto 규칙을 따른다.
+#   15분 이하 인트라데이 -> 1D, 15분 초과 인트라데이 -> 1W, 일봉 -> 1M, 주봉 이상 -> 12M
+# 즉 일봉 차트의 피봇은 "전일"이 아니라 "전월" OHLC로 계산된다.
+PIVOT_ANCHOR_DAILY = "D"
+PIVOT_ANCHOR_WEEKLY = "W"
+PIVOT_ANCHOR_MONTHLY = "ME"
+PIVOT_ANCHOR_YEARLY = "YE"
+DEFAULT_PIVOT_ANCHOR = PIVOT_ANCHOR_MONTHLY
+
 # TradingView Technicals 상단 탭과 동일한 순서.
 TIMEFRAMES: tuple[Timeframe, ...] = (
-    Timeframe("1분", "1m", "5d"),
-    Timeframe("5분", "5m", "1mo"),
-    Timeframe("15분", "15m", "1mo"),
-    Timeframe("30분", "30m", "1mo"),
-    Timeframe("1시간", "60m", "2y"),
-    Timeframe("2시간", "60m", "2y", resample_rule="2h"),
-    Timeframe("4시간", "60m", "2y", resample_rule="4h"),
-    Timeframe("1일", "1d", DEFAULT_PERIOD),
-    Timeframe("1주", "1wk", "5y"),
-    Timeframe("1달", "1mo", "10y"),
+    Timeframe("1분", "1m", "5d", PIVOT_ANCHOR_DAILY),
+    Timeframe("5분", "5m", "1mo", PIVOT_ANCHOR_DAILY),
+    Timeframe("15분", "15m", "1mo", PIVOT_ANCHOR_DAILY),
+    Timeframe("30분", "30m", "1mo", PIVOT_ANCHOR_WEEKLY),
+    Timeframe("1시간", "60m", "2y", PIVOT_ANCHOR_WEEKLY),
+    Timeframe("2시간", "60m", "2y", PIVOT_ANCHOR_WEEKLY, resample_rule="2h"),
+    Timeframe("4시간", "60m", "2y", PIVOT_ANCHOR_WEEKLY, resample_rule="4h"),
+    Timeframe("1일", "1d", DEFAULT_PERIOD, PIVOT_ANCHOR_MONTHLY),
+    Timeframe("1주", "1wk", "5y", PIVOT_ANCHOR_YEARLY),
+    Timeframe("1달", "1mo", "10y", PIVOT_ANCHOR_YEARLY),
 )
 TIMEFRAME_LABELS = tuple(timeframe.label for timeframe in TIMEFRAMES)
 DEFAULT_TIMEFRAME = "1일"

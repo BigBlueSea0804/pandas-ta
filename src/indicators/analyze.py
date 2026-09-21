@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from config import DEFAULT_PIVOT_ANCHOR
 from indicators.moving_averages import compute_moving_averages
 from indicators.oscillators import compute_oscillators
 from indicators.pivots import PivotTable, compute_pivots
@@ -25,7 +26,12 @@ class AnalysisResult:
     pivots: PivotTable
 
 
-def analyze_ohlcv(ohlcv: pd.DataFrame, *, ticker: str = "") -> AnalysisResult:
+def analyze_ohlcv(
+    ohlcv: pd.DataFrame,
+    *,
+    ticker: str = "",
+    pivot_anchor: str = DEFAULT_PIVOT_ANCHOR,
+) -> AnalysisResult:
     oscillators = compute_oscillators(ohlcv)
     moving_averages = compute_moving_averages(ohlcv)
     oscillator_gauge, ma_gauge, overall_gauge = summarize_groups(oscillators, moving_averages)
@@ -37,5 +43,5 @@ def analyze_ohlcv(ohlcv: pd.DataFrame, *, ticker: str = "") -> AnalysisResult:
         oscillator_gauge=oscillator_gauge,
         ma_gauge=ma_gauge,
         overall_gauge=overall_gauge,
-        pivots=compute_pivots(ohlcv),
+        pivots=compute_pivots(ohlcv, anchor=pivot_anchor),
     )
