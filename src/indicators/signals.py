@@ -60,6 +60,65 @@ def action_ma(close: float | None, mean: float | None) -> Action:
     return "neutral"
 
 
+def action_ichimoku(
+    close: float | None,
+    conversion: float | None,
+    base: float | None,
+    previous_conversion: float | None,
+    previous_base: float | None,
+    lead1: float | None,
+    lead2: float | None,
+    cloud_lead1: float | None,
+    cloud_lead2: float | None,
+) -> Action:
+    """TV Technical Ratings: 일목은 기준선 하나가 아니라 구름대 전체로 판단한다.
+
+    다른 이동평균처럼 "종가 > 기준선 -> 바이"로 보지 않고, 아래 다섯 조건이 모두
+    맞을 때만 신호를 낸다.
+      1) 종가가 현재 위치의 구름대(26봉 전에 계산돼 지금 자리에 그려진
+         선행스팬 A/B) 밖에 있다
+      2) 종가가 기준선 기준으로도 같은 방향이다
+      3) 전환선이 기준선 기준으로도 같은 방향이다
+      4) 그 전환선·기준선 교차가 이번 봉에 막 일어났다(직전 봉은 반대였다)
+      5) 이번 봉에서 계산한(=앞으로 그려질) 선행스팬 A/B의 방향도 같다
+    그래서 종가가 기준선 아래여도 셀이 아니라 뉴트럴인 경우가 흔하다.
+
+    cloud_lead1/cloud_lead2는 26봉 전 값(현재 위치의 구름대), lead1/lead2는
+    이번 봉에서 계산한 값이다.
+    """
+    if None in (
+        close,
+        conversion,
+        base,
+        previous_conversion,
+        previous_base,
+        lead1,
+        lead2,
+        cloud_lead1,
+        cloud_lead2,
+    ):
+        return "neutral"
+    cloud_top = max(cloud_lead1, cloud_lead2)
+    cloud_bottom = min(cloud_lead1, cloud_lead2)
+    if (
+        close > cloud_top
+        and close > base
+        and conversion > base
+        and previous_conversion <= previous_base
+        and lead1 > lead2
+    ):
+        return "buy"
+    if (
+        close < cloud_bottom
+        and close < base
+        and conversion < base
+        and previous_conversion >= previous_base
+        and lead1 < lead2
+    ):
+        return "sell"
+    return "neutral"
+
+
 def action_adx(
     adx: float | None,
     plus_di: float | None,
