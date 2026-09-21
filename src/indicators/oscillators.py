@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
-import pandas_ta as ta
+import pandas_ta_classic as ta
 
 from config import BBP_EMA_LENGTH
 from indicators._series import last_number, last_three, last_two
@@ -23,20 +23,6 @@ from indicators.signals import (
 )
 
 
-def commodity_channel_index(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 20) -> pd.Series:
-    """Typical price 대비 동일 윈도우 MAD 기반 CCI."""
-    typical = (high + low + close) / 3.0
-
-    def _cci(window: pd.Series) -> float:
-        mean = float(window.mean())
-        mad = float((window - mean).abs().mean())
-        if mad == 0:
-            return float("nan")
-        return (float(window.iloc[-1]) - mean) / (0.015 * mad)
-
-    return typical.rolling(length).apply(_cci, raw=False)
-
-
 def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
     high = ohlcv["high"]
     low = ohlcv["low"]
@@ -48,7 +34,7 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
     stoch_k = last_number(stoch_df, prefix="STOCHk")
     stoch_d = last_number(stoch_df, prefix="STOCHd")
 
-    cci, prev_cci = last_two(commodity_channel_index(high, low, close, length=20))
+    cci, prev_cci = last_two(ta.cci(high, low, close, length=20))
 
     adx_df = ta.adx(high, low, close, length=14, tvmode=True)
     adx = last_number(adx_df, prefix="ADX_14")

@@ -55,9 +55,6 @@ SCORE_LEAN = 0.1
 
 PIVOT_METHODS = ("classic", "fibonacci", "camarilla", "woodie", "dm")
 PIVOT_LEVELS = ("R3", "R2", "R1", "P", "S1", "S2", "S3")
-FIB_R1 = 0.382
-FIB_R2 = 0.618
-FIB_R3 = 1.0
 
 # TradingView Technicals 스타일 1차 임계값
 RSI_OVERSOLD = 30

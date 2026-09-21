@@ -8,7 +8,7 @@ dependencies = [
     "yfinance==1.7.0",
     "pandas==3.0.6",
     "numpy==2.2.6",
-    "pandas-ta==0.4.71b0",
+    "pandas-ta-classic==0.8.32",
     "streamlit==1.64.0",
     "plotly==7.1.0",
 ]
@@ -23,8 +23,6 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 filterwarnings = [
     "ignore:The 'mode.copy_on_write' option is deprecated:pandas.errors.Pandas4Warning",
-    # pandas-ta의 ichimoku 내부 구현이 'd' 빈도 별칭을 쓴다 (우리 코드 밖 경고).
-    "ignore:'d' is deprecated:pandas.errors.Pandas4Warning",
 ]
 
 [tool.uv]
