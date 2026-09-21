@@ -15,7 +15,7 @@ from config import ACTION_COLORS, DEFAULT_TIMEFRAME, TIMEFRAME_LABELS, TIMEFRAME
 from dashboard.formatters import format_price
 from dashboard.gauges import gauge_figure
 from dashboard.tables import counts_html, inject_styles, pivots_table_html, signals_table_html
-from data.fetch import FetchError, demo_ohlcv, fetch_timeframe_ohlcv
+from data.fetch import FetchError, demo_ohlcv, fetch_ohlcv, fetch_timeframe_ohlcv
 from indicators.analyze import analyze_ohlcv
 
 st.set_page_config(page_title="기술적 분석", layout="wide", initial_sidebar_state="expanded")
@@ -29,6 +29,12 @@ def _load_ohlcv(ticker: str, timeframe_label: str, period_override: str | None) 
     timeframe = _TIMEFRAME_BY_LABEL[timeframe_label]
     result = fetch_timeframe_ohlcv(ticker, timeframe, period=period_override)
     return result.ticker, result.data, result.bar_count, result.warning
+
+
+@st.cache_data(ttl=3600)
+def _load_pivot_ohlcv(ticker: str, period: str):
+    """피봇용 EOD 일봉. TV의 "Use daily-based values"와 같은 이유로 따로 받는다."""
+    return fetch_ohlcv(ticker, period=period, interval="1d").data
 
 
 def main() -> None:
@@ -67,11 +73,22 @@ def main() -> None:
         if use_sample:
             packed = demo_ohlcv()
             ticker_name, frame, warning = packed.ticker, packed.data, packed.warning
+            pivot_frame = frame
         else:
             ticker_name, frame, _bar_count, warning = _load_ohlcv(
                 ticker, timeframe_label, period_override
             )
-        analysis = analyze_ohlcv(frame, ticker=ticker_name, pivot_anchor=timeframe.pivot_anchor)
+            pivot_frame = (
+                frame
+                if timeframe.pivot_period is None
+                else _load_pivot_ohlcv(ticker, timeframe.pivot_period)
+            )
+        analysis = analyze_ohlcv(
+            frame,
+            ticker=ticker_name,
+            pivot_ohlcv=pivot_frame,
+            pivot_anchor=timeframe.pivot_anchor,
+        )
     except FetchError as exc:
         st.error(str(exc))
         return

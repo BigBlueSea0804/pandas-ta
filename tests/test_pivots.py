@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from config import PIVOT_ANCHOR_DAILY, PIVOT_ANCHOR_MONTHLY
+from config import PIVOT_ANCHOR_DAILY, PIVOT_ANCHOR_MONTHLY, PIVOT_ANCHOR_WEEKLY, PIVOT_LEVELS, PIVOT_METHODS
 from indicators.pivots import compute_pivots
 
 
@@ -135,3 +135,59 @@ def test_matches_tradingview_pivot_points_standard() -> None:
     for method, levels in expected.items():
         for level, value in levels.items():
             assert table[method][level] == pytest.approx(value, abs=0.005), f"{method} {level}"
+
+
+def test_weekly_anchor_matches_tradingview_weekly_bars() -> None:
+    """30분~4시간 탭(주봉 앵커) 검증.
+
+    일봉을 주 단위로 합친 결과가 TradingView 주봉과 같은 피봇을 내는지 본다.
+    아래 값은 TradingView에서 받은 AAPL 실제 시세다(2026-09-08 주, 2026-09-14 주).
+    """
+    daily = pd.DataFrame(
+        {
+            "open": [317.10, 327.45, 334.79],
+            "high": [318.00, 336.22, 335.50],
+            "low": [309.90, 326.30, 331.34],
+            "close": [315.34, 332.27, 333.08],
+            "volume": [1e6, 1e6, 1e6],
+        },
+        index=pd.to_datetime(["2026-09-08", "2026-09-11", "2026-09-14"]),
+    )
+    tradingview_weekly = pd.DataFrame(
+        {
+            "open": [317.10, 334.79],
+            "high": [336.22, 335.50],
+            "low": [309.90, 331.34],
+            "close": [332.27, 333.08],
+            "volume": [1e6, 1e6],
+        },
+        index=pd.to_datetime(["2026-09-13", "2026-09-20"]),
+    )
+    from_daily = compute_pivots(daily, anchor=PIVOT_ANCHOR_WEEKLY)
+    from_weekly = compute_pivots(tradingview_weekly, anchor=PIVOT_ANCHOR_DAILY)
+    for method in PIVOT_METHODS:
+        for level in PIVOT_LEVELS:
+            expected = from_weekly[method][level]
+            if expected is None:
+                assert from_daily[method][level] is None, f"{method} {level}"
+            else:
+                assert from_daily[method][level] == pytest.approx(expected), f"{method} {level}"
+
+
+def test_daily_anchor_uses_previous_trading_day() -> None:
+    """1분~15분 탭(일봉 앵커) 검증. TradingView AAPL 실제 일봉 2개."""
+    daily = pd.DataFrame(
+        {
+            "open": [334.77, 337.905],
+            "high": [338.34, 338.49],
+            "low": [330.1833, 332.53],
+            "close": [337.00, 336.13],
+            "volume": [1e6, 1e6],
+        },
+        index=pd.to_datetime(["2026-09-17", "2026-09-18"]),
+    )
+    table = compute_pivots(daily, anchor=PIVOT_ANCHOR_DAILY)
+    # 직전 거래일 H=338.34 L=330.1833 C=337.00 -> P=(H+L+C)/3
+    assert table["classic"]["P"] == pytest.approx((338.34 + 330.1833 + 337.00) / 3)
+    # 우디는 당일(현재 기간) 시가 337.905를 쓴다.
+    assert table["woodie"]["P"] == pytest.approx((338.34 + 330.1833 + 2 * 337.905) / 4)
