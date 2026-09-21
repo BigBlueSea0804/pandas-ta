@@ -52,7 +52,7 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
     stochrsi_k = last_number(stochrsi_df, prefix="STOCHRSIk")
     stochrsi_d = last_number(stochrsi_df, prefix="STOCHRSId")
 
-    willr = last_number(ta.willr(high, low, close, length=14))
+    willr, prev_willr = last_two(ta.willr(high, low, close, length=14))
 
     ema13 = ta.ema(close, length=BBP_EMA_LENGTH)
     bull = high - ema13
@@ -98,7 +98,7 @@ def compute_oscillators(ohlcv: pd.DataFrame) -> list[Signal]:
             id="willr_14",
             name="윌리엄스 퍼센트 레인지 (14)",
             value=willr,
-            action=action_willr(willr),
+            action=action_willr(willr, prev_willr),
         ),
         Signal(
             id="bbp",

@@ -47,10 +47,14 @@ def test_cci_needs_reversal_from_band() -> None:
     assert action_cci(None, None) == "neutral"
 
 
-def test_willr_bands() -> None:
-    assert action_willr(-80) == "buy"
-    assert action_willr(-50) == "neutral"
-    assert action_willr(-20) == "sell"
+def test_willr_needs_reversal_from_band() -> None:
+    # 과매도에서 되돌아설 때만 바이, 과매수에서 꺾일 때만 셀.
+    assert action_willr(-85, -90) == "buy"
+    assert action_willr(-15, -10) == "sell"
+    assert action_willr(-50, -55) == "neutral"
+    assert action_willr(None, -90) == "neutral"
+    # 과매도 구간이어도 계속 흘러내리는 중이면 뉴트럴 (TradingView 실제 규칙).
+    assert action_willr(-98.02, -61.92) == "neutral"
 
 
 def test_mom_uses_slope_not_sign() -> None:

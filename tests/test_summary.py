@@ -1,5 +1,7 @@
 """게이지 투표 집계·등급 테스트."""
 
+import pytest
+
 from indicators.signals import Signal
 from indicators.summary import rating_from_score, summarize_groups, summarize_signals
 
@@ -34,14 +36,27 @@ def test_ma_majority_buy_is_strong_buy() -> None:
 
 
 def test_overall_combines_oscillator_and_ma() -> None:
+    """TV 요약: 카운트는 합산, 등급은 두 그룹 등급의 평균."""
     oscillators = _votes("sell", *["neutral"] * 9, "buy")
     moving_averages = _votes(*["buy"] * 10, *["sell"] * 2)
     osc, ma, overall = summarize_groups(oscillators, moving_averages)
     assert (osc.sell, osc.neutral, osc.buy) == (1, 9, 1)
     assert (ma.sell, ma.neutral, ma.buy) == (2, 0, 10)
     assert (overall.sell, overall.neutral, overall.buy) == (3, 9, 11)
-    assert overall.score == (11 - 3) / 23
+    assert overall.score == (osc.score + ma.score) / 2
+    # 26표를 한 번에 세는 방식((11-3)/23)과는 다른 값이다.
+    assert overall.score != (11 - 3) / 23
     assert overall.rating == "buy"
+
+
+def test_overall_matches_tradingview_ibm_snapshot() -> None:
+    """TradingView IBM 일봉 스냅샷(Recommend.MA=-14/15, Other=-3/11) 회귀."""
+    oscillators = _votes(*["sell"] * 3, *["neutral"] * 8)
+    moving_averages = _votes(*["sell"] * 14, "neutral")
+    osc, ma, overall = summarize_groups(oscillators, moving_averages)
+    assert osc.score == pytest.approx(-0.2727272727272727)
+    assert ma.score == pytest.approx(-0.9333333333333333)
+    assert overall.score == pytest.approx(-0.603030303030303)
 
 
 def test_missing_values_are_excluded_from_denominator() -> None:

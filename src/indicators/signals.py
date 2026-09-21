@@ -159,13 +159,23 @@ def action_cross_band(
     return "neutral"
 
 
-def action_cci(value: float | None, previous: float | None) -> Action:
-    """TV: CCI가 밴드 밖에서 0 쪽으로 되돌아올 때만 신호 (직전 봉 대비 방향 필요)."""
+def action_band_reversal(
+    value: float | None,
+    previous: float | None,
+    *,
+    oversold: float,
+    overbought: float,
+) -> Action:
+    """TV: 밴드 밖으로 나간 값이 되돌아오기 시작할 때만 신호.
+
+    밴드를 넘겼다는 사실만으로는 신호를 내지 않는다. 과매도 구간에서 계속
+    흘러내리는 중이면(직전 봉보다 낮으면) 아직 뉴트럴이다.
+    """
     if value is None or previous is None:
         return "neutral"
-    if value < CCI_OVERSOLD and value > previous:
+    if value < oversold and value > previous:
         return "buy"
-    if value > CCI_OVERBOUGHT and value < previous:
+    if value > overbought and value < previous:
         return "sell"
     return "neutral"
 
@@ -243,8 +253,12 @@ def action_stochrsi(k: float | None, d: float | None) -> Action:
     return action_cross_band(k, d, oversold=STOCHRSI_OVERSOLD, overbought=STOCHRSI_OVERBOUGHT)
 
 
-def action_willr(value: float | None) -> Action:
-    return action_banded(value, oversold=WILLR_OVERSOLD, overbought=WILLR_OVERBOUGHT)
+def action_cci(value: float | None, previous: float | None) -> Action:
+    return action_band_reversal(value, previous, oversold=CCI_OVERSOLD, overbought=CCI_OVERBOUGHT)
+
+
+def action_willr(value: float | None, previous: float | None) -> Action:
+    return action_band_reversal(value, previous, oversold=WILLR_OVERSOLD, overbought=WILLR_OVERBOUGHT)
 
 
 def action_uo(value: float | None) -> Action:
