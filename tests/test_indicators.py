@@ -131,3 +131,34 @@ def test_analyze_ohlcv_builds_gauges() -> None:
     assert result.ma_gauge.rating == "strong_buy"
     assert result.overall_gauge.buy == result.oscillator_gauge.buy + result.ma_gauge.buy
     assert result.pivots["classic"]["P"] is not None
+
+
+def test_analyze_uses_separate_series_for_pivots() -> None:
+    """인트라데이 탭은 지표는 인트라데이 봉, 피봇은 EOD 일봉으로 계산한다."""
+    intraday_index = pd.date_range("2024-03-01 09:30", periods=260, freq="30min")
+    intraday_close = 100.0 + np.arange(260) * 0.05
+    intraday = pd.DataFrame(
+        {
+            "open": intraday_close - 0.05,
+            "high": intraday_close + 0.2,
+            "low": intraday_close - 0.2,
+            "close": intraday_close,
+            "volume": np.full(260, 1000.0),
+        },
+        index=intraday_index,
+    )
+    daily = pd.DataFrame(
+        {
+            "open": [95.0, 105.0],
+            "high": [110.0, 112.0],
+            "low": [90.0, 104.0],
+            "close": [100.0, 108.0],
+            "volume": [1000.0, 1000.0],
+        },
+        index=pd.to_datetime(["2024-01-02", "2024-01-03"]),
+    )
+    result = analyze_ohlcv(intraday, ticker="TEST", pivot_ohlcv=daily, pivot_anchor="D")
+    # 지표는 인트라데이 봉 기준
+    assert result.close == pytest.approx(float(intraday["close"].iloc[-1]))
+    # 피봇은 넘겨준 일봉 기준 (직전 일봉 H=110 L=90 C=100 -> P=100)
+    assert result.pivots["classic"]["P"] == pytest.approx(100.0)
